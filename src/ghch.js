@@ -52,7 +52,6 @@ const githubClubhouseImport = options => {
           issue_comment['external_id'] = data.html_url;
           return issue_comment;
         });
-        log(issue_comments)
         return issue_comments;
       })
       .catch(err => {
