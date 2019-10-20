@@ -34,6 +34,35 @@ const githubClubhouseImport = options => {
       })
   }
 
+  function fetchGithubIssueComments(number) {
+    const octokitOptions = octokit.issues.listComments.endpoint.merge({
+      owner,
+      repo,
+      issue_number: number,
+      per_page: 100
+    });
+    return octokit
+      .paginate(octokitOptions)
+      .then(data => {
+        const issue_comments = data.map(data =>{
+          var issue_comment = {};
+          issue_comment['text'] = data.body;
+          issue_comment['updated_at'] = data.updated_at;
+          issue_comment['created_at'] = data.created_at;
+          issue_comment['external_id'] = data.html_url;
+          return issue_comment;
+        });
+        log(issue_comments)
+        return issue_comments;
+      })
+      .catch(err => {
+        log(
+          `Failed to fetch issue comments from ${number}\n`
+        );
+        log(chalk.red(err));
+      });
+  }
+
   function importIssuesToClubhouse(issues) {
     const clubhouse = Clubhouse.create(options.clubhouseToken)
     return clubhouse
@@ -41,7 +70,7 @@ const githubClubhouseImport = options => {
       .then(project => {
         let issuesImported = 0
         return Promise.all(
-          issues.map(({ created_at, updated_at, labels, title, body, html_url }) => {
+          issues.map(({ created_at, updated_at, labels, title, body, html_url, number }) => {
             const story_type = getStoryType(labels)
             return reflect(
               clubhouse
@@ -52,11 +81,12 @@ const githubClubhouseImport = options => {
                   name: title,
                   description: body,
                   external_id: html_url,
+                  comments: fetchGithubIssueComments(number),
                   project_id: project.id,
                 })
                 .then(() => (issuesImported = issuesImported + 1))
                 .catch(() => {
-                  log(chalk.red(`Failed to import issue #${issue.number}`))
+                  log(chalk.red(`Failed to import issue #${number}`))
                 })
             )
           })
